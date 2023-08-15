@@ -45,7 +45,7 @@ class TicTacToe:
     def simulation(self, node):
         board = node.state.copy()
         to_player = node.to_player
-        actions = self.get_valid_action_list(node.state, shuffle=True)
+        actions = self.get_valid_action_list(node.state.flatten(), shuffle=True)
 
         for action in actions:
             _, score, done = self.step(board, action, to_player, copy=False)
