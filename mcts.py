@@ -20,7 +20,7 @@ class MCTS:
         return node.select()
     
     def expand(self, node):
-        actions = None
+        actions = self.game.get_valid_action_list(node.state.flatten(), shuffle=True)
         node.expand(actions)
     
     def simulation(self, node):

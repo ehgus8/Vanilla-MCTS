@@ -2,11 +2,11 @@ import math
 
 class Node:
 
-    def __init__(self, parent) -> None:
+    def __init__(self, parent, to_player) -> None:
         self.parent = parent # Node
         self.children = None # List
         self.state = None
-        self.to_player = None # player to act in this state, to make next state.
+        self.to_player = to_player # player to act in this state, to make next state.
         self.action = None # index or coordinate of actions to become this state.
         self.visit = 0
         self.score = 0
@@ -20,7 +20,7 @@ class Node:
         max_idx = 0
         children = self.children
         for idx, child in enumerate(children):
-            uct = child.score + math.sqrt(2)*math.sqrt(math.log(self.visit)/child.visit)
+            uct = self.to_player * child.score + math.sqrt(2)*math.sqrt(math.log(self.visit)/child.visit)
             if uct > max_uct:
                 max_uct = uct
                 max_idx = idx
@@ -33,7 +33,7 @@ class Node:
 
         children = []
         for action in actions:
-            child = Node(self)
+            child = Node(self, self.to_player * -1)
             child.action = action
 
         self.children = children
