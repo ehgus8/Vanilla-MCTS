@@ -7,5 +7,5 @@ It aims to simplify MCTS code for anyone to understand easily.
 1. Clone this repository:
 
 ```bash
-https://github.com/ehgus8/Vanilla-MCTS.git
+git clone https://github.com/ehgus8/Vanilla-MCTS.git
 ```
