@@ -9,3 +9,8 @@ It aims to simplify MCTS code for anyone to understand easily.
 ```bash
 git clone https://github.com/ehgus8/Vanilla-MCTS.git
 ```
+
+## Usage
+```bash
+python main.py
+```
