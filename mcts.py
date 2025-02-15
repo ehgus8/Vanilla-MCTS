@@ -30,7 +30,7 @@ class MCTS:
                     result = 1 if winner == 1 - node.currentPlayer else -1
                     node.backup(trace, result, board, Game)
                     break
-                elif node.move_count == 9:
+                elif node.move_count == Game.state_dim:
                     is_terminal = True
                     result = 0
                     node.backup(trace, result, board, Game)
