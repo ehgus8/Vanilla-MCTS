@@ -44,11 +44,12 @@ class MCTS:
     @staticmethod
     def simulate(Game: game.Game, board, node):
         """
-        Simulation step of MCTS.
+        Simulation (rollout) step of MCTS.
         """
         sim_board = board.copy()
         current_player = node.currentPlayer
         move_count = node.move_count
+
         while True:
             valid_moves = Game.get_valid_moves(sim_board)
             if not valid_moves:
@@ -57,10 +58,12 @@ class MCTS:
                 Game.display_board(sim_board)
                 break
             action = valid_moves[np.random.randint(len(valid_moves))]
+
             current_player = Game.make_move(sim_board, current_player, action)
             move_count += 1
+
             winner = Game.check_winner(sim_board, 1 - current_player, action)
             if winner != -1:
                 return 1 if winner == (1 - node.currentPlayer) else -1
-            elif move_count == 9:
+            elif move_count == Game.state_dim:
                 return 0

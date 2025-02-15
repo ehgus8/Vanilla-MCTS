@@ -8,6 +8,7 @@ from node import Node
 class TicTacToe(Game):
     rows, cols = 3, 3
     action_dim = rows * cols
+    state_dim = rows * cols
     def __init__(self):
         self.board = np.zeros((3, 3, 3), dtype=int)
 
