@@ -1,46 +1,66 @@
+import game
+import numpy as np
+
 class MCTS:
-    
-    def __init__(self, game) -> None:
-        self.game = game
 
-    # forward : selection -> expansion -> simulation -> backpropagation
-    def forward(self, root):
-        trace = [root]
-        node = root
+    @staticmethod
+    def mcts(board, root, Game: game.Game, mcts_iterations):
+        """
+        Perform Monte Carlo Tree Search.
+        Select -> Expand -> Simulate -> Backup
 
-        while not node.is_terminal():
-            node = self.select(node)
-            trace.append(node)
-        
-        if node.is_game_ended:
-            self.backup(trace, node.winner)
-            return
+        Args:
+            board (np.ndarray): The current board state.
+            current_player (int): The current player.
+            model (nn.Module): The neural network model.
+        """
+        for _ in range(mcts_iterations):
+            node = root
+            trace = [root]
+            is_terminal = False
+            while node.children:
+                node.select()
+                node = node.children[0]
+                trace.append(node)
 
-        self.expand(node)
-        score = self.simulation(node) # score is the number of winning player or draw 0
-        self.backup(trace, score)
-    
-    def select(self, node):
-        node = node.select()
-        game = self.game
-        state, score, done = game.step(node.parent.state, node.action, to_player=node.parent.to_player)
-        node.state = state
+                Game.make_move(board, 1 - node.currentPlayer, node.prevAction)
+                winner = Game.check_winner(board, 1 - node.currentPlayer, node.prevAction)
+                if winner != -1:
+                    is_terminal = True
+                    result = 1 if winner == 1 - node.currentPlayer else -1
+                    node.backup(trace, result, board, Game)
+                    break
+                elif node.move_count == 9:
+                    is_terminal = True
+                    result = 0
+                    node.backup(trace, result, board, Game)
+                    break
+            if is_terminal:
+                continue
+            node.expand(Game.get_valid_moves(board))
+            result = MCTS.simulate(Game, board, node)
+            node.backup(trace, result, board, Game)
 
-        if done:
-            node.winner = score
-            node.is_game_ended = True
-
-        return node
-    
-    def expand(self, node):
-        actions = self.game.get_valid_action_list(node.state.flatten(), shuffle=True)
-        node.expand(actions)
-    
-    def simulation(self, node):
-        return self.game.simulation(node)
-
-    def backup(self, trace, score):
-        for node in trace[::-1]:
-            node.visit += 1
-            node.score += score
-            # score = score * -1
+    @staticmethod
+    def simulate(Game: game.Game, board, node):
+        """
+        Simulation step of MCTS.
+        """
+        sim_board = board.copy()
+        current_player = node.currentPlayer
+        move_count = node.move_count
+        while True:
+            valid_moves = Game.get_valid_moves(sim_board)
+            if not valid_moves:
+                print('move_count:',move_count, node.move_count)
+                Game.display_board(board)
+                Game.display_board(sim_board)
+                break
+            action = valid_moves[np.random.randint(len(valid_moves))]
+            current_player = Game.make_move(sim_board, current_player, action)
+            move_count += 1
+            winner = Game.check_winner(sim_board, 1 - current_player, action)
+            if winner != -1:
+                return 1 if winner == (1 - node.currentPlayer) else -1
+            elif move_count == 9:
+                return 0

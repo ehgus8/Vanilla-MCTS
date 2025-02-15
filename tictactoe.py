@@ -1,133 +1,130 @@
 # this code is needed to refactor
 import numpy as np
 import random
-
-size = 3
-class TicTacToe:
+from game import Game
+from collections import deque
+from mcts import MCTS
+from node import Node
+class TicTacToe(Game):
+    rows, cols = 3, 3
+    action_dim = rows * cols
     def __init__(self):
-        pass
+        self.board = np.zeros((3, 3, 3), dtype=int)
 
-    def size(self):
-        return size
-    
-    def reset(self):
-        board = np.zeros((size, size),dtype=np.float32)
+    @staticmethod
+    def display_board(board):
+        display = np.full((3, 3), ' ')
+        display[board[0] == 1] = 'O'
+        display[board[1] == 1] = 'X'
+        for row in display:
+            print(row)
+        # print(board[2])
 
-        return board
-    
-    # it takes an action in the form of an integer index (0~8) not coordinate (y, x)
-    def step(self, board, action, to_player, copy=True):
-        y, x = action//size, action%size
-        if copy:
-            board = board.copy()
+    @staticmethod
+    def get_action_idx(action: tuple[int, int]):
+        """
+        Returns:
+            action index (int): index of action flattened to 1D
+        """
+        return action[0] * TicTacToe.rows + action[1]
 
-        done = self.make_move(board, y, x, to_player)
-        next_player = to_player * -1
-        score = 0
-        if done == True:
-            if self.winner == 0:
-                score = 0
-            else:
-                score = to_player
+    @staticmethod
+    def make_move(board, current_player, action):
+        row, col = action
+        if board[0, row, col] == 0 and board[1, row, col] == 0:
+            board[current_player, row, col] = 1
+            board[2, :, :] = 1 - current_player
+            return 1 - current_player
+        else:
+            print("Invalid move. Try again.")
+            return current_player
+
+    @staticmethod
+    def undo_move(board, current_player, action):
+        row, col = action
+        board[1 - current_player, row, col] = 0
+        board[2, :, :] = 1 - current_player
+
+    @staticmethod
+    def check_winner(board, player, action):
+        row, col = action
+        def dfs(dr, dc):
+            q = deque([(row, col)])
+            visited = set()
+            seq_count = 1
+            while q:
+                r, c = q.pop()
+                visited.add((r, c))
                 
-        return board, score, done
-    
-    def get_valid_action_list(self, board, shuffle = False):
-        indices = np.where(board == 0)
-        action_list = indices[0].tolist()
-        if shuffle:
-            random.shuffle(action_list)
-        if action_list == []:
-            action_list = None
-
-        return action_list
-
-    def simulation(self, node):
-        board = node.state.copy()
-        to_player = node.to_player
-        actions = self.get_valid_action_list(node.state.flatten(), shuffle=True)
-
-        for action in actions:
-            _, score, done = self.step(board, action, to_player, copy=False)
-
-            if done:
-                return score
+                if 0 <= r + dr < 3 and 0 <= c + dc < 3 and (r + dr, c + dc) not in visited and board[player, r + dr, c + dc] == 1:
+                    q.append((r + dr, c + dc))
+                    seq_count += 1
+                if 0 <= r - dr < 3 and 0 <= c - dc < 3 and (r - dr, c - dc) not in visited and board[player, r - dr, c - dc] == 1:
+                    q.append((r - dr, c - dc))
+                    seq_count += 1
+                if seq_count >= 3:
+                    return True
+                
+            return False
+        
+        for dr, dc in [(0, 1), (1, 0), (1, 1), (1, -1)]:
+            if dfs(dr, dc):
+                return player
             
-            to_player = to_player * -1
-        
-        return 0
-
-
-    def get_action_mask(self, s):
-        mask = s[0].clone().flatten()
-        mask[mask == 0] = 2
-        mask[(mask == 1) | (mask == -1)] = 0
-        mask[mask == 2] = 1
+        return -1 # No winner
     
-        return mask
-        
-    # 플레이어 1은 -1 , 플레이어 2는 1로 변경 된 상태를 넘겨준다.
-    def get_reversed_board(self, s):
-        return s * -1
+    @staticmethod
+    def get_valid_moves(board):
+        return [(r, c) for r in range(3) for c in range(3) if board[0, r, c] == 0 and board[1, r, c] == 0]
 
+    @staticmethod
+    def mcts(board: np.array, root, mcts_iterations):
+        """
+        Call Monte Carlo Tree Search.
+        Select -> Expand -> Simulate -> Backup
+        """
+        MCTS.mcts(board, root, TicTacToe, mcts_iterations)
 
-    def get_random_move(self):
-        valid_indices = np.array(np.where(self.valid_moves == 1)).reshape(-1)
-        random_move = np.random.choice(valid_indices,size=1)
-        return random_move[0]
-    
-    
-    def get_valid_moves(self, board):
-        indices = np.where(board == 0)
-        valid_moves = indices[0] * 5 + indices[1]
-        return valid_moves
+    def play_against_mcts(self, mcts_iterations):
+        """
+        Play a game of Tic-Tac-Toe against the MCTS agent.
 
-    def make_move(self, board, row, col, player):
-        if board[row, col] != 0:
-            return None
+        """
+        current_player = 0
+        move_count = 0
 
-        board[row, col] = player
-        
-        is_win = self.check_win(board, player)
-        if is_win:
-            print(f'Player {player} wins!')
-            self.winner = player
-            return True
-        #draw
-        if is_win == None:
-            print(f'Player draw!')
-            self.winner = 0
-            return True
-        
-        return False
+        while True:
+            # Human player
+            TicTacToe.display_board(self.board)
+            row, col = map(int, input("Enter row and column: ").split())
+            current_player = TicTacToe.make_move(self.board, current_player, (row, col))
+            move_count += 1
+            winner = TicTacToe.check_winner(self.board, 1 - current_player, (row, col))
+            if winner != -1:
+                TicTacToe.display_board(self.board)
+                print("Player", winner, "wins!")
+                break
+            elif move_count == 9:
+                TicTacToe.display_board(self.board)
+                print("It's a draw!")
+                break
 
-    def check_win(self, board, player):
-        # Check rows and columns
-        for i in range(size):
-            for j in range(size - 2):
-                if (np.all(board[i, j:j+3] == player) or 
-                    np.all(board[j:j+3, i] == player)):
-                    return True
-
-        diag1 = [1, 1] # vector (y, x)
-        diag2 = [1, -1] # vector (y, x)
-        # Check diagonals
-        for i in range(size - 2):
-            for j in range(size - 2):
-                if (np.all(board[[i+k*diag1[0] for k in range(3)], [j+k*diag1[1] for k in range(3)]] == player) or
-                    np.all(board[[i+k*diag2[0] for k in range(3)], [j+2+k*diag2[1] for k in range(3)]] == player)):
-                    return True
-
-        # Check draw
-        if (np.where(board == 0)[0].shape[0] == 0):
-            return None
-
-        return False
-
-    def display_board(self, board):
-        print(board)
-    
-    def get_state(self):
-        return self.board.copy()
-
-    
+            # MCTS agent
+            root = Node(None, None, current_player, move_count)
+            print('move_count_root:',move_count)
+            TicTacToe.mcts(self.board, root, mcts_iterations)
+            # row, col = root.sample_child().prevAction
+            chosen_child = root.max_visit_child()
+            for child in root.children:
+                print(child.to_string(TicTacToe))
+            current_player = TicTacToe.make_move(self.board, current_player, chosen_child.prevAction)
+            move_count += 1
+            winner = TicTacToe.check_winner(self.board, root.currentPlayer, chosen_child.prevAction)
+            if winner != -1:
+                TicTacToe.display_board(self.board)
+                print("Player", winner, "wins!")
+                break
+            elif move_count == 9:
+                TicTacToe.display_board(self.board)
+                print("It's a draw!")
+                break

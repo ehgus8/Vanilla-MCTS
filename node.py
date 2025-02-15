@@ -1,58 +1,81 @@
-import math
+import numpy as np
+import utils
+import game
 
 class Node:
+    def __init__(self, parent: 'Node', prevAction: tuple, currentPlayer: int, move_count: int, prior: float = 0.0):
+        """
+        Initialize a new node.
 
-    def __init__(self, parent, to_player) -> None:
-        self.parent = parent # Node
-        self.children = None # List
-        self.state = None
-        self.to_player = to_player # player to act in this state, to make next state.
-        self.action = None # index or coordinate of actions to become this state.
+        Args:
+            parent (Node): The parent node.
+            prevAction: The action that led to this node.
+            currentPlayer: The player who is currently making a move.
+            move_count: The number of moves made so far. it is different from the depth of the tree.
+
+        """
+        self.parent = parent
         self.visit = 0
-        self.score = 0
-        self.is_game_ended = False
-        self.winner = None
-
-    def is_terminal(self):
-        return self.is_game_ended or self.children == None
+        self.value = 0 # The value of the node that means the value of edge between parent and this node.
+        self.ucb = np.inf
+        self.prior = prior
+        self.move_count = move_count
+        self.prevAction = prevAction
+        self.currentPlayer = currentPlayer
+        self.children = []
 
     def select(self):
-        max_uct = -999
-        max_idx = 0
-        children = self.children
-        for idx, child in enumerate(children):
-            uct = self.to_player * child.score + math.sqrt(2)*math.sqrt(math.log(self.visit)/(child.visit+1))
-            if uct > max_uct:
-                max_uct = uct
-                max_idx = idx
-    
+        """
+        Select the child node with the highest UCB value.
+        But Actually, this function sorts the children by UCB value in ascending order.
+        """
 
-        return children[max_idx]
+        utils.calcUcbOfChildrenFromParent(self)
+        self.children.sort(key=lambda x: x.ucb, reverse=True)
 
-    def expand(self, actions):
-        children = []
-        for action in actions:
-            child = Node(self, self.to_player * -1)
-            child.action = action
-            children.append(child)
+    def expand(self, valid_moves: list[tuple[int, int]]):
+        """
+        Expand the node by adding all possible valid moves as children.
+        """
 
-        self.children = children
-
-        return None
-    
-    def sample_action(self, method='visit'):
-        max_visit = 0
-        max_idx = 0
-        children = self.children
-        for idx, child in enumerate(children):
-            if child.visit > max_visit:
-                max_visit = child.visit
-                max_idx = idx
+        for move in valid_moves: 
+            self.children.append(Node(self, move, 1 - self.currentPlayer, self.move_count + 1))
         
-        return children[max_idx].action
 
-    def print_children(self):
-        children = self.children
-        for idx, child in enumerate(children):
-            print(f'{idx+1}: visit: {child.visit}, score: {child.score}')
+    def backup(self, trace: list['Node'], value: float, board: np.ndarray, Game):
+        """
+        Backpropagate the value of the simulation result
+        by updating the value and visit count of each node in the trace.
+        The value is negated at each level of the tree.
+        """
 
+        for node in trace[::-1]:
+            node.visit += 1
+            node.value += value
+            value *= -1
+            if node.parent:
+                Game.undo_move(board, board[2,0,0], node.prevAction)
+    
+    def max_visit_child(self):
+        """
+        Return the child with the highest visit count.
+        """
+
+        return max(self.children, key=lambda x: x.visit)
+
+    def sample_child(self, Game):
+        """
+        Sample a child node according to the visit count.
+        """
+
+        prob_dist = utils.get_probablity_distribution_of_children(self, Game)
+        children = [None] * Game.action_dim
+        for child in self.children:
+            children[Game.get_action_idx(child.prevAction)] = child
+        
+        return np.random.choice(children, p=prob_dist)
+
+    def to_string(self, Game: game.Game):
+        prob_dist = utils.get_probablity_distribution_of_children(self.parent, Game)
+        return f"Node: {self.prevAction}, Value: {self.value}, Visit: {self.visit}, P(Visit): {prob_dist[Game.get_action_idx(self.prevAction)]}, UCB: {self.ucb}"
+    
