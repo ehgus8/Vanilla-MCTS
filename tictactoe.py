@@ -1,14 +1,19 @@
-# this code is needed to refactor
 import numpy as np
-import random
+import time
 from game import Game
 from collections import deque
 from mcts import MCTS
 from node import Node
+import utils
+
+
 class TicTacToe(Game):
     rows, cols = 3, 3
     action_dim = rows * cols
     state_dim = rows * cols
+
+    logger = utils.get_game_logger('tictactoe')
+
     def __init__(self):
         self.board = np.zeros((3, 3, 3), dtype=int)
 
@@ -113,7 +118,9 @@ class TicTacToe(Game):
             # MCTS agent
             root = Node(None, None, current_player, move_count)
             print('move_count_root:',move_count)
+            start_time = time.time()
             TicTacToe.mcts(self.board, root, mcts_iterations)
+            TicTacToe.logger.debug(f'mcts_iteration: {mcts_iterations}, time: {time.time() - start_time}s')
             # row, col = root.sample_child().prevAction
             chosen_child = root.max_visit_child()
             for child in root.children:

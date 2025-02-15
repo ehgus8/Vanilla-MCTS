@@ -1,16 +1,16 @@
 import numpy as np
 from collections import deque
 from node import Node
-import torch
-import utils
 import time
 from game import Game
 from mcts import MCTS
-
+import utils
 class Connect4(Game):
     rows, cols = 6, 7
     action_dim = cols
     state_dim = rows * cols
+
+    logger = utils.get_game_logger('connect4')
     def __init__(self):
         self.board = np.zeros((3, 6, 7), dtype=int)
 
@@ -165,7 +165,9 @@ class Connect4(Game):
 
             # 2) MCTS agent turn
             root = Node(None, None, current_player, move_count)
+            start_time = time.time()
             Connect4.mcts(self.board, root, mcts_iterations)  # model이 None이면 vanilla MCTS
+            Connect4.logger.debug(f'mcts_iteration: {mcts_iterations}, time: {time.time() - start_time}s')
             chosen_child = root.max_visit_child()  # 혹은 sample_child()
             for child in root.children:
                 print(child.to_string(Connect4))
