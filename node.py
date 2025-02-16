@@ -54,7 +54,7 @@ class Node:
             node.value += value
             value *= -1
             if node.parent:
-                Game.undo_move(board, board[2,0,0], node.prevAction)
+                Game.undo_move(board, node.currentPlayer, node.prevAction)
     
     def max_visit_child(self):
         """
