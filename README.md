@@ -18,3 +18,4 @@ python main.py
 ## Game List
 1. TicTacToe
 2. Connect4 *(added on 25-02-15)*
+3. Gomoku(Omok) *(added on 25-03-01)*
